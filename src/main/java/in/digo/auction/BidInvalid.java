@@ -25,6 +25,6 @@ public class BidInvalid extends BidId {
 
     @Override
     public String toString() {
-        return "BidInvalid[errorMessage="+errorMessage+", "+reservePrice+"]";
+        return "BidInvalid[errorMessage="+errorMessage+", reservePrice="+reservePrice+"]";
     }
 }

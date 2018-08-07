@@ -70,11 +70,6 @@ public class AuctionController {
             return ResponseEntity.badRequest().body(new BidError(bid.getAuctionItemId()));
         }
 
-        List<Bid> top = bids.findTop2ByAuctionItemIdOrderByMaxAutoBidAmountDesc(bid.getAuctionItemId());
-        for (Bid high : top) {
-            logger.info("DEBUG: highest bids: {}", high);
-        }
-
         BigDecimal currentBid = auctionItem.get().getCurrentBid();
         BigDecimal reservePrice = auctionItem.get().getReservePrice();
         BigDecimal maxAutoBidAmount = bid.getMaxAutoBidAmount();
@@ -97,6 +92,47 @@ public class AuctionController {
         logger.info("Creating bid {} on {} of {} for {}",
                 bid.getBidId(), bid.getAuctionItemId(), maxAutoBidAmount, bid.getBidderName());
         return ResponseEntity.ok(new BidId(bid.getBidId()));
+    }
+
+    @GetMapping("/price/{id}")
+    public ResponseEntity<Price> price(@PathVariable long id) {
+        Optional<AuctionItem> auctionItem = auctionItems.findById(id);
+
+        if (!auctionItem.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        BigDecimal pay = auctionItem.get().getReservePrice();
+
+        // top two highest bidders
+        List<Bid> highest = bids.findTop2ByAuctionItemIdOrderByMaxAutoBidAmountDesc(id);
+        if (highest.size() == 2) {
+            Bid first = highest.get(0);
+            Bid second = highest.get(1);
+            if (second.getMaxAutoBidAmount().compareTo(pay) > 0) {
+                pay = BigDecimal.ONE.add(second.getMaxAutoBidAmount());
+            }
+        }
+
+        return ResponseEntity.ok(new Price(id, pay));
+    }
+
+    @GetMapping("/bid/{name}/for/{id}")
+    public ResponseEntity<Bid> bidByFor(@PathVariable String name, @PathVariable long id) {
+        Optional<Bid> bid = bids.findFirstByBidderNameAndAuctionItemIdOrderByMaxAutoBidAmountDesc(name, id);
+
+        if (!bid.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(bid.get());
+    }
+
+    @GetMapping("/bids/{name}")
+    public Iterable<Bid> bidsBy(@PathVariable String name) {
+        List<Bid> list = bids.findByBidderNameOrderByMaxAutoBidAmountDesc(name);
+
+        return list;
     }
 
     /*
